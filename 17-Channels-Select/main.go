@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -27,11 +28,15 @@ func receiveOnly(channel <-chan int) {
 
 type Counter struct {
 	value int
+	lock  sync.Mutex
 }
 
-func count(counter *Counter) {
+func count(counter *Counter, wg *sync.WaitGroup) {
+	counter.lock.Lock()
+	defer counter.lock.Lock()
 	counter.value++
 	fmt.Println(counter.value)
+	wg.Done()
 }
 
 func main() {
@@ -45,17 +50,17 @@ func main() {
 	// ans2 := <-ch2
 	// fmt.Println(ans, ans2)
 
-	// for i := 1; i <= 2; i++ {
-	// 	select {
-	// 	case ans := <-ch:
-	// 		fmt.Println(ans)
-	// 	case ans2 := <-ch2:
-	// 		fmt.Println(ans2)
-	// 	}
-	// }
+	for i := 1; i <= 2; i++ {
+		select {
+		case ans := <-ch:
+			fmt.Println(ans)
+		case ans2 := <-ch2:
+			fmt.Println(ans2)
+		}
+	}
 
 	// Main sleeps longer than the goroutines
-	time.Sleep(3 * time.Second)
+	// time.Sleep(3 * time.Second)
 
 	select {
 	case ans := <-ch:
@@ -81,14 +86,18 @@ func main() {
 	statusReports <- true
 
 	// Read and print the boolean values back out (First In, First Out)
-	fmt.Println(<-statusReports)
-	fmt.Println(<-statusReports)
-	fmt.Println(<-statusReports)
+	// fmt.Println(<-statusReports)
+	// fmt.Println(<-statusReports)
+	// fmt.Println(<-statusReports)
 
-	counter := Counter{0}
+	counter := Counter{}
+	wg := sync.WaitGroup{}
+	wg.Add(100)
 
 	for i := 1; i <= 100; i++ {
-		go count(&counter)
+		go count(&counter, &wg)
 	}
-	time.Sleep(2 * time.Second)
+
+	// time.Sleep(2 * time.Second)
+	wg.Wait()
 }
